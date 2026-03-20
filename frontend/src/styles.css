@@ -1,0 +1,265 @@
+:root {
+  color-scheme: dark;
+  --bg: #0c1018;
+  --panel: #151b27;
+  --text: #edf1f7;
+  --muted: #a4afbf;
+  --accent: #4f8cff;
+  --border: #2a3449;
+  --good: #1db954;
+  --warn: #f4b400;
+  --bad: #e75a5a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: radial-gradient(circle at top right, #1a2235, #0c1018 55%);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.55rem;
+}
+
+header p {
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.panel {
+  background: color-mix(in srgb, var(--panel) 95%, black 5%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+textarea,
+input,
+button {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #0f1522;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+textarea {
+  min-height: 220px;
+  resize: vertical;
+}
+
+button {
+  cursor: pointer;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.ghost {
+  width: auto;
+  background: transparent;
+  border-color: var(--border);
+  font-weight: 500;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0 12px;
+  color: var(--muted);
+}
+
+.controls {
+  display: grid;
+  gap: 8px;
+}
+
+.range-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.range-wrap input {
+  padding: 0;
+}
+
+.loading,
+.error,
+.warn {
+  margin-top: 10px;
+  border-radius: 8px;
+  padding: 9px;
+}
+
+.loading {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.error {
+  background: color-mix(in srgb, var(--bad) 25%, transparent);
+}
+
+.warn {
+  background: color-mix(in srgb, var(--warn) 25%, transparent);
+}
+
+.headline-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-value {
+  height: 100%;
+}
+
+.progress-value.green {
+  background: var(--good);
+}
+
+.progress-value.yellow {
+  background: var(--warn);
+}
+
+.progress-value.red {
+  background: var(--bad);
+}
+
+.breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.breakdown span {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--muted);
+}
+
+.source-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.source-list li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.source-list a {
+  color: #83b7ff;
+  word-break: break-all;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.text-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 130px;
+  white-space: pre-wrap;
+}
+
+.versions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.version-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.version-card p {
+  min-height: 110px;
+  color: var(--muted);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.optimize {
+  border-top: 1px dashed var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .compare-grid {
+    grid-template-columns: 1fr;
+  }
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

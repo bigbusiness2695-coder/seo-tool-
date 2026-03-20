@@ -1,42 +1,116 @@
-# Originality Platform
+# Free Plagiarism Checker + Humanizer + SEO Optimizer
 
-Advanced plagiarism checker + AI text humanizer with a unified dashboard.
+Production-style starter with:
 
-## Features Implemented
+- **React frontend** (`frontend/`)
+- **Node.js + Express backend** (`backend/`)
+- PlagScan integration (with safe local fallback)
+- Ollama integration for free local humanization (with safe fallback)
+- Integrated SEO analysis module
 
-- Deep source matching across curated source categories (Wikipedia, academic, news, competitor, social).
-- Exact + paraphrase + partial similarity detection with color-coded in-text highlights.
-- AI-generated content probability and AI pattern detector.
-- Source credibility labels and citation suggestions (MLA/APA/Chicago).
-- Humanizer with tone customization, style preservation (protected phrases), grammar fix, vocabulary enhancement.
-- 5-version humanization generator with quality scoring.
-- One-click optimization workflow (check -> detect AI -> humanize -> score).
-- Real-time analysis while typing.
-- Batch plagiarism checker with CSV export.
-- Document-to-document comparison tool.
-- Timeline chart and usage statistics.
-- Export to PDF, DOCX, TXT, MD, and Google Docs stub link.
-- Dark/light theme support and accessibility-friendly controls.
+## Features
 
-## Quick Start
+### 1) Plagiarism Checker
+- Unlimited text input
+- Character counter (`0/∞`)
+- Plagiarism percentage + progress bar
+- Risk status (Low / Medium / High)
+- Match list with source/credibility/match type
+- Color thresholds:
+  - `0-10%` green
+  - `10-30%` yellow
+  - `30%+` red
+- Copy/download report
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+### 2) Text Humanizer
+- Humanization intensity slider (0-100)
+- Ollama integration (`mistral` by default)
+- 5 generated versions
+- Side-by-side original vs humanized comparison
+- Copy + download as `.txt`
+- Graceful fallback if Ollama is unavailable
+
+### 3) SEO Content Optimizer
+- SEO score (0-100) + breakdown
+- Keyword analyzer + density
+- Headline optimizer suggestions
+- Meta description generator
+- Content gap + link + visual suggestions
+- Search intent and schema suggestions
+- Optimization action plan
+
+### 4) Combined Workflow
+- One-click `/api/optimize` pipeline:
+  - plagiarism check
+  - humanization
+  - SEO analysis
+  - combined quality score
+
+## Project Structure
+
+```text
+backend/
+  lib/
+    plagiarism.js
+    humanize.js
+    seo.js
+  server.js
+  .env.example
+frontend/
+  src/
+    App.jsx
+    main.jsx
+    styles.css
+  vite.config.js
 ```
 
-Open: `http://localhost:8000`
+## Local Setup
 
-## API Highlights
+### Backend
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run dev
+```
+Backend runs on `http://localhost:3001`
 
-- `POST /api/plagiarism/check`
-- `POST /api/plagiarism/batch`
-- `POST /api/plagiarism/compare`
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend runs on `http://localhost:5173`
+
+Set frontend API base if needed:
+```bash
+VITE_API_BASE_URL=http://localhost:3001
+```
+
+## Environment Variables
+
+Backend `.env`:
+
+```bash
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+PLAGSCAN_API_KEY=
+PLAGSCAN_API_URL=https://api.plagscan.com/v1/plagiarism/check
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=mistral
+```
+
+> If `PLAGSCAN_API_KEY` is missing, backend uses a local heuristic plagiarism analyzer fallback.
+
+## API Endpoints
+
+- `GET /api/health`
+- `POST /api/plagiarism`
 - `POST /api/humanize`
+- `POST /api/seo/analyze`
 - `POST /api/optimize`
-- `POST /api/realtime/analyze`
-- `GET /api/history/stats`
-- `GET /api/history/timeline`
-- `POST /api/export`
+
+## Deployment
+
+- Hostinger guide: `HOSTINGER_DEPLOYMENT.md`
