@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Originality Platform - Plagiarism Checker + Humanizer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Originality Platform</h1>
+      <div class="toolbar">
+        <button id="themeToggle" aria-label="Toggle dark and light mode">Toggle Theme</button>
+        <button id="optimizeBtn" class="primary" aria-label="Optimize content in one click">Optimize My Content</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <h2>Input</h2>
+        <textarea
+          id="mainText"
+          rows="12"
+          aria-label="Main content input"
+          placeholder="Paste content to analyze, humanize, and optimize..."
+        ></textarea>
+        <div class="options-grid">
+          <label>
+            Tone
+            <select id="toneSelect" aria-label="Select tone">
+              <option value="professional">Professional</option>
+              <option value="casual">Casual</option>
+              <option value="academic">Academic</option>
+              <option value="creative">Creative</option>
+              <option value="sarcastic">Sarcastic</option>
+              <option value="technical">Technical</option>
+            </select>
+          </label>
+          <label>
+            Humanization Level
+            <select id="levelSelect" aria-label="Select humanization level">
+              <option value="20">Light Touch (20%)</option>
+              <option value="40">Moderate (40%)</option>
+              <option value="60" selected>Medium (60%)</option>
+              <option value="80">Aggressive (80%)</option>
+              <option value="100">Complete Rewrite (100%)</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Protected Phrases (comma-separated)
+          <input id="protectPhrases" aria-label="Protected phrases" placeholder="Company Name™, ProductTagline, API_NAME" />
+        </label>
+        <div class="actions">
+          <button id="checkBtn" class="primary">Check Plagiarism</button>
+          <button id="humanizeBtn">Generate 5 Humanized Versions</button>
+          <button id="copyBtn">Copy Output</button>
+        </div>
+        <div class="realtime">
+          <h3>Real-Time Analysis</h3>
+          <div class="metric-row">
+            <span>Plagiarism: <strong id="rtPlag">0%</strong></span>
+            <span>AI: <strong id="rtAi">0%</strong></span>
+            <span>Readability: <strong id="rtRead">0</strong></span>
+          </div>
+          <ul id="rtTips"></ul>
+        </div>
+      </section>
+
+      <aside class="panel sidebar">
+        <h2>Smart Suggestions</h2>
+        <ul>
+          <li>Academic paper? Include citations for matched facts.</li>
+          <li>Blog content? Keep sentence length between 12-20 words.</li>
+          <li>Technical docs? Protect product and API terms before humanizing.</li>
+          <li>SEO writing? Use heading hierarchy and concise intros.</li>
+        </ul>
+        <h3>Content Quality Score</h3>
+        <div class="score-card">
+          <div id="qualityOverall" class="score-value">0</div>
+          <div id="qualityBreakdown">Originality 0 | Humanness 0 | Readability 0 | Grammar 0</div>
+        </div>
+        <h3>Usage Statistics</h3>
+        <ul id="usageStats">
+          <li>Total checked: 0</li>
+          <li>Average plagiarism: 0%</li>
+          <li>Humanized pieces: 0</li>
+          <li>Total words: 0</li>
+        </ul>
+      </aside>
+
+      <section class="panel wide">
+        <h2>Plagiarism Report</h2>
+        <div class="breakdown-grid">
+          <div>Exact Match: <strong id="exactPct">0%</strong></div>
+          <div>Paraphrased: <strong id="paraPct">0%</strong></div>
+          <div>Partially Similar: <strong id="partialPct">0%</strong></div>
+          <div>Original: <strong id="origPct">0%</strong></div>
+        </div>
+        <div id="processingBar" class="processing hidden" role="status" aria-live="polite">
+          <span class="pulse"></span> Analyzing deep sources...
+        </div>
+        <div class="comparison">
+          <div>
+            <h3>Color-Coded Source Match</h3>
+            <div id="highlightedText" class="output"></div>
+          </div>
+          <div>
+            <h3>Citation Suggestions</h3>
+            <ul id="citationList"></ul>
+          </div>
+        </div>
+        <h3>Source Credibility</h3>
+        <table id="sourceTable">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Type</th>
+              <th>Credibility</th>
+              <th>Segments</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="panel wide">
+        <h2>Humanizer</h2>
+        <div class="comparison">
+          <div>
+            <h3>Before</h3>
+            <div id="beforeText" class="output"></div>
+          </div>
+          <div>
+            <h3>After (Best Version)</h3>
+            <div id="afterText" class="output"></div>
+          </div>
+        </div>
+        <h3>Generated Versions</h3>
+        <div id="versions" class="versions"></div>
+      </section>
+
+      <section class="panel wide">
+        <h2>Timeline & Comparison</h2>
+        <canvas id="timelineChart" height="90" aria-label="Plagiarism timeline chart"></canvas>
+        <div class="comparison dual-input">
+          <textarea id="leftDoc" rows="6" placeholder="Document A for comparison"></textarea>
+          <textarea id="rightDoc" rows="6" placeholder="Document B for comparison"></textarea>
+        </div>
+        <button id="compareBtn">Compare Documents</button>
+        <div id="compareOut" class="output"></div>
+      </section>
+
+      <section class="panel wide">
+        <h2>Batch Processing</h2>
+        <p>Paste multiple documents separated by <code>---</code> and run a batch check.</p>
+        <textarea id="batchText" rows="8" placeholder="Doc 1...
+---
+Doc 2...
+---
+Doc 3..."></textarea>
+        <div class="actions">
+          <button id="batchBtn">Run Batch Check</button>
+          <button id="downloadCsvBtn">Download Batch CSV</button>
+        </div>
+        <div id="batchOut" class="output"></div>
+      </section>
+
+      <section class="panel wide">
+        <h2>Export</h2>
+        <div class="actions">
+          <button class="exportBtn" data-format="pdf">PDF</button>
+          <button class="exportBtn" data-format="docx">DOCX</button>
+          <button class="exportBtn" data-format="txt">TXT</button>
+          <button class="exportBtn" data-format="md">Markdown</button>
+          <button class="exportBtn" data-format="google_docs">Google Docs Link</button>
+        </div>
+        <div id="exportOut" class="output"></div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
