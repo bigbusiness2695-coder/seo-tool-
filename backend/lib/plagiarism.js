@@ -1,3 +1,5 @@
+import { envConfigured } from "./integrations.js";
+
 const STOP_WORDS = new Set([
   "the",
   "a",
@@ -204,38 +206,174 @@ function parsePlagScanResponse(data, text) {
   };
 }
 
-export async function checkPlagiarism(text) {
+function normalizeGenericPlagiarism(provider, data, text) {
+  const percentage = Number(
+    data?.plagiarism_percentage ??
+      data?.similarity ??
+      data?.score ??
+      data?.result?.score ??
+      0
+  );
+  const risk = riskFromPercentage(percentage);
+  return {
+    provider,
+    plagiarismPercentage: percentage,
+    progressColor: risk.color,
+    status: risk.status,
+    characterCount: text.length,
+    breakdown: {
+      exact: Number(data?.exact_match ?? data?.breakdown?.exact ?? 0),
+      paraphrased: Number(data?.paraphrased ?? data?.breakdown?.paraphrased ?? 0),
+      partial: Number(data?.partial ?? data?.breakdown?.partial ?? 0),
+      original: Number(
+        data?.original ??
+          data?.breakdown?.original ??
+          Math.max(0, 100 - percentage)
+      )
+    },
+    matchingSources: (data?.sources || data?.matches || []).map((s) => ({
+      phrase: s.phrase || s.text || "Matched fragment",
+      matchType: s.match_type || s.matchType || "partial",
+      confidence: Number(s.confidence || s.score || 0),
+      sourceType: s.source_type || s.sourceType || "web",
+      credibility: s.credibility || "Unknown",
+      sourceUrl: s.url || s.sourceUrl || "#"
+    }))
+  };
+}
+
+async function callJson(url, options) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function checkWithPlagScan(text) {
   const apiKey = process.env.PLAGSCAN_API_KEY;
+  const apiSecret = process.env.PLAGSCAN_API_SECRET;
   const apiUrl =
     process.env.PLAGSCAN_API_URL ||
     "https://api.plagscan.com/v1/plagiarism/check";
 
-  if (!apiKey) {
-    return {
-      ...heuristicPlagiarism(text),
-      warning:
-        "PLAGSCAN_API_KEY not set. Returned heuristic local analysis fallback."
-    };
+  if (!apiKey) throw new Error("PLAGSCAN_API_KEY missing");
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`
+  };
+  if (apiSecret) headers["x-api-secret"] = apiSecret;
+  const data = await callJson(apiUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ text })
+  });
+  return parsePlagScanResponse(data, text);
+}
+
+async function checkWithCopyscape(text) {
+  if (!envConfigured("COPYSCAPE_USERNAME", "COPYSCAPE_API_KEY")) {
+    throw new Error("Copyscape credentials missing");
+  }
+  const apiUrl =
+    process.env.COPYSCAPE_API_URL || "https://www.copyscape.com/api/";
+  const body = new URLSearchParams({
+    u: process.env.COPYSCAPE_USERNAME,
+    k: process.env.COPYSCAPE_API_KEY,
+    o: "csearch",
+    t: text
+  });
+  const data = await callJson(apiUrl, { method: "POST", body });
+  return normalizeGenericPlagiarism("copyscape", data, text);
+}
+
+async function checkWithTurnitin(text) {
+  if (!envConfigured("TURNITIN_API_KEY", "TURNITIN_API_SECRET")) {
+    throw new Error("Turnitin credentials missing");
+  }
+  const apiUrl =
+    process.env.TURNITIN_API_URL ||
+    "https://api.turnitin.com/api/v1/similarity/check";
+  const data = await callJson(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.TURNITIN_API_KEY,
+      "X-API-Secret": process.env.TURNITIN_API_SECRET
+    },
+    body: JSON.stringify({ text })
+  });
+  return normalizeGenericPlagiarism("turnitin", data, text);
+}
+
+async function checkWithQuetext(text) {
+  if (!envConfigured("QUETEXT_API_KEY")) {
+    throw new Error("Quetext API key missing");
+  }
+  const apiUrl =
+    process.env.QUETEXT_API_URL || "https://www.quetext.com/api/v1/check";
+  const data = await callJson(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.QUETEXT_API_KEY}`
+    },
+    body: JSON.stringify({ text })
+  });
+  return normalizeGenericPlagiarism("quetext", data, text);
+}
+
+async function checkWithUnicheck(text) {
+  if (!envConfigured("UNICHECK_CLIENT_ID", "UNICHECK_CLIENT_SECRET")) {
+    throw new Error("Unicheck credentials missing");
+  }
+  const apiUrl =
+    process.env.UNICHECK_API_URL || "https://api.unicheck.com/v1/checks";
+  const data = await callJson(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Client-Id": process.env.UNICHECK_CLIENT_ID,
+      "X-Client-Secret": process.env.UNICHECK_CLIENT_SECRET
+    },
+    body: JSON.stringify({ text })
+  });
+  return normalizeGenericPlagiarism("unicheck", data, text);
+}
+
+export async function checkPlagiarism(text) {
+  const providerOrder = (
+    process.env.PLAGIARISM_PROVIDER_ORDER ||
+    "plagscan,copyscape,turnitin,quetext,unicheck"
+  )
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+
+  const providers = {
+    plagscan: checkWithPlagScan,
+    copyscape: checkWithCopyscape,
+    turnitin: checkWithTurnitin,
+    quetext: checkWithQuetext,
+    unicheck: checkWithUnicheck
+  };
+  const attempts = [];
+
+  for (const name of providerOrder) {
+    const fn = providers[name];
+    if (!fn) continue;
+    try {
+      const result = await fn(text);
+      return { ...result, attempts };
+    } catch (error) {
+      attempts.push({ provider: name, success: false, reason: error.message });
+    }
   }
 
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({ text })
-    });
-    if (!response.ok) {
-      throw new Error(`PlagScan request failed with status ${response.status}`);
-    }
-    const data = await response.json();
-    return parsePlagScanResponse(data, text);
-  } catch (error) {
-    return {
-      ...heuristicPlagiarism(text),
-      warning: `PlagScan unavailable (${error.message}). Returned fallback analysis.`
-    };
-  }
+  return {
+    ...heuristicPlagiarism(text),
+    attempts,
+    warning:
+      "No external plagiarism provider succeeded. Returned heuristic local analysis fallback."
+  };
 }

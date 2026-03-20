@@ -101,11 +101,13 @@ export default function App() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
   const [history, setHistory] = useState([]);
+  const [integrationData, setIntegrationData] = useState(null);
 
   const [plagiarismResult, setPlagiarismResult] = useState(null);
   const [humanizerResult, setHumanizerResult] = useState(null);
   const [seoResult, setSeoResult] = useState(null);
   const [optimizeResult, setOptimizeResult] = useState(null);
+  const [grammarResult, setGrammarResult] = useState(null);
 
   const onGrow = useAutoGrow();
   const characters = useMemo(() => text.length, [text]);
@@ -124,6 +126,20 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    async function loadIntegrations() {
+      try {
+        const response = await fetch(`${API_BASE}/api/integrations/status`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setIntegrationData(data);
+      } catch {
+        // Ignore availability probe failures.
+      }
+    }
+    loadIntegrations();
+  }, []);
 
   function pushHistory(entry) {
     const next = [{ ...entry, at: new Date().toISOString() }, ...history].slice(0, 8);
@@ -174,6 +190,13 @@ export default function App() {
     if (!data) return;
     setSeoResult(data);
     pushHistory({ type: "SEO", score: `${data.seoScore}/100`, chars: characters });
+  }
+
+  async function runGrammar() {
+    const data = await callApi("/api/grammar/check", { text, language: "en-US" });
+    if (!data) return;
+    setGrammarResult(data);
+    pushHistory({ type: "Grammar", score: `${data.score}/100`, chars: characters });
   }
 
   async function runOptimize() {
@@ -318,6 +341,9 @@ export default function App() {
                   <button onClick={runSeo} disabled={loading || !text.trim()}>
                     Analyze SEO
                   </button>
+                  <button className="secondary" onClick={runGrammar} disabled={loading || !text.trim()}>
+                    Check Grammar
+                  </button>
                 </>
               )}
             </div>
@@ -461,6 +487,37 @@ export default function App() {
                     <li key={i}>{x}</li>
                   ))}
                 </ul>
+                {seoResult.externalData?.searchInsights?.topResults?.length > 0 && (
+                  <>
+                    <h3>Google Search Insights</h3>
+                    <ul>
+                      {seoResult.externalData.searchInsights.topResults.map((r, i) => (
+                        <li key={`${r.url}-${i}`}>
+                          <a href={r.url} target="_blank" rel="noreferrer">
+                            {r.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
+            {grammarResult && (
+              <div className="result-block">
+                <div className="headline-row">
+                  <strong>Grammar Score: {grammarResult.score}/100</strong>
+                  <span>{grammarResult.provider}</span>
+                </div>
+                <Progress value={grammarResult.score} label="Grammar Quality" />
+                <ul>
+                  {(grammarResult.issues || []).slice(0, 10).map((issue, i) => (
+                    <li key={`${issue.rule}-${i}`}>
+                      {issue.rule}: {issue.message}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -471,6 +528,7 @@ export default function App() {
                   <span>Quality Score: {optimizeResult.qualityScore}/100</span>
                   <span>Plagiarism: {optimizeResult.plagiarism?.plagiarismPercentage}%</span>
                   <span>SEO Score: {optimizeResult.seo?.seoScore}/100</span>
+                  <span>Grammar Score: {optimizeResult.grammar?.score ?? "N/A"}/100</span>
                 </div>
               </div>
             )}
@@ -519,6 +577,33 @@ export default function App() {
               <li>Add one external citation for every major claim.</li>
               <li>Aim for SEO score 80+ before publishing.</li>
             </ul>
+          </section>
+
+          <section className="card">
+            <h3>API Integration Readiness</h3>
+            {!integrationData ? (
+              <p className="muted">Loading integration status...</p>
+            ) : (
+              <>
+                <p className="muted">
+                  Required ready: {integrationData.requiredReady}/{integrationData.requiredTotal} (
+                  {integrationData.readinessPercent}%)
+                </p>
+                <Progress value={integrationData.readinessPercent} label="Core API Setup" />
+                <ul className="history-list">
+                  {Object.entries(integrationData.categories || {}).map(([name, stat]) => (
+                    <li key={name}>
+                      <div>
+                        <strong>{name}</strong>
+                        <span>
+                          {stat.configured}/{stat.total}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
         </aside>
       </div>

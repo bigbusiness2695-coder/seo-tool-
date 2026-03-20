@@ -7,6 +7,7 @@ Production-style starter with:
 - PlagScan integration (with safe local fallback)
 - Ollama integration for free local humanization (with safe fallback)
 - Integrated SEO analysis module
+- Multi-provider API integration registry (37-provider ready env map)
 
 ## Features
 
@@ -21,6 +22,7 @@ Production-style starter with:
   - `10-30%` yellow
   - `30%+` red
 - Copy/download report
+- Provider chain support: PlagScan -> Copyscape -> Turnitin -> Quetext -> Unicheck -> local fallback
 
 ### 2) Text Humanizer
 - Humanization intensity slider (0-100)
@@ -29,6 +31,7 @@ Production-style starter with:
 - Side-by-side original vs humanized comparison
 - Copy + download as `.txt`
 - Graceful fallback if Ollama is unavailable
+- Provider chain support: Ollama -> Cohere -> HuggingFace -> OpenAI -> Claude -> local fallback
 
 ### 3) SEO Content Optimizer
 - SEO score (0-100) + breakdown
@@ -38,8 +41,14 @@ Production-style starter with:
 - Content gap + link + visual suggestions
 - Search intent and schema suggestions
 - Optimization action plan
+- Optional external enrichment: Google Custom Search + NewsAPI + Datamuse semantic keywords
 
-### 4) Combined Workflow
+### 4) Grammar Checker
+- LanguageTool integration endpoint
+- Returns score + issue list + suggestions
+- Local fallback checks if external grammar service is unavailable
+
+### 5) Combined Workflow
 - One-click `/api/optimize` pipeline:
   - plagiarism check
   - humanization
@@ -53,6 +62,8 @@ backend/
   lib/
     plagiarism.js
     humanize.js
+    grammar.js
+    integrations.js
     seo.js
   server.js
   .env.example
@@ -95,19 +106,22 @@ Backend `.env`:
 ```bash
 PORT=3001
 FRONTEND_URL=http://localhost:5173
-PLAGSCAN_API_KEY=
-PLAGSCAN_API_URL=https://api.plagscan.com/v1/plagiarism/check
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=mistral
 ```
 
-> If `PLAGSCAN_API_KEY` is missing, backend uses a local heuristic plagiarism analyzer fallback.
+Use `backend/.env.example` for the full 37-provider template.
+
+> Important: This project supports provider integration in code, but API keys/accounts must be created by you. The backend automatically falls back when a provider is not configured or unavailable.
 
 ## API Endpoints
 
 - `GET /api/health`
+- `GET /api/integrations/status`
+- `GET /api/integrations/env-template`
 - `POST /api/plagiarism`
 - `POST /api/humanize`
+- `POST /api/grammar/check`
 - `POST /api/seo/analyze`
 - `POST /api/optimize`
 

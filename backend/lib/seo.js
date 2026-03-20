@@ -2,6 +2,61 @@ function words(text) {
   return (text.toLowerCase().match(/[a-z0-9']+/g) || []).filter(Boolean);
 }
 
+async function fetchGoogleSearchInsights(keyword) {
+  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const cx = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  if (!apiKey || !cx || !keyword) return null;
+  const endpoint = new URL("https://www.googleapis.com/customsearch/v1");
+  endpoint.searchParams.set("key", apiKey);
+  endpoint.searchParams.set("cx", cx);
+  endpoint.searchParams.set("q", keyword);
+  endpoint.searchParams.set("num", "5");
+  const response = await fetch(endpoint);
+  if (!response.ok) throw new Error(`Google Search failed with status ${response.status}`);
+  const data = await response.json();
+  return {
+    provider: "google-custom-search",
+    topResults: (data.items || []).slice(0, 5).map((item) => ({
+      title: item.title,
+      url: item.link,
+      snippet: item.snippet
+    }))
+  };
+}
+
+async function fetchNewsResearch(keyword) {
+  const key = process.env.NEWSAPI_KEY;
+  if (!key || !keyword) return null;
+  const endpoint = new URL("https://newsapi.org/v2/everything");
+  endpoint.searchParams.set("q", keyword);
+  endpoint.searchParams.set("pageSize", "5");
+  endpoint.searchParams.set("sortBy", "relevancy");
+  endpoint.searchParams.set("apiKey", key);
+  const response = await fetch(endpoint);
+  if (!response.ok) throw new Error(`NewsAPI failed with status ${response.status}`);
+  const data = await response.json();
+  return {
+    provider: "newsapi",
+    relatedArticles: (data.articles || []).slice(0, 5).map((a) => ({
+      title: a.title,
+      url: a.url,
+      source: a.source?.name
+    }))
+  };
+}
+
+async function fetchDatamuseSuggestions(keyword) {
+  const base = process.env.DATAMUSE_API_URL || "https://api.datamuse.com";
+  if (!keyword) return null;
+  const endpoint = new URL("/words", base);
+  endpoint.searchParams.set("ml", keyword);
+  endpoint.searchParams.set("max", "8");
+  const response = await fetch(endpoint);
+  if (!response.ok) throw new Error(`Datamuse failed with status ${response.status}`);
+  const data = await response.json();
+  return (data || []).map((w) => w.word).filter(Boolean);
+}
+
 function sentences(text) {
   return (text.match(/[^.!?\n]+[.!?]?/g) || []).map((s) => s.trim()).filter(Boolean);
 }
@@ -114,16 +169,37 @@ function seoScoreCard(text, title, keyword) {
   };
 }
 
-export function analyzeSEO({ text, title, keyword }) {
+export async function analyzeSEO({ text, title, keyword }) {
   const card = seoScoreCard(text, title, keyword);
   const detectedKeyword = card.keyword.primaryKeyword;
   const heading = titleSuggestions(title, detectedKeyword);
   const tokenCount = words(text).length;
+  const warnings = [];
+  let searchInsights = null;
+  let newsResearch = null;
+  let semanticKeywords = [];
+
+  try {
+    searchInsights = await fetchGoogleSearchInsights(detectedKeyword);
+  } catch (error) {
+    warnings.push(error.message);
+  }
+  try {
+    newsResearch = await fetchNewsResearch(detectedKeyword);
+  } catch (error) {
+    warnings.push(error.message);
+  }
+  try {
+    semanticKeywords = (await fetchDatamuseSuggestions(detectedKeyword)) || [];
+  } catch (error) {
+    warnings.push(error.message);
+  }
 
   return {
     seoScore: card.overall,
     scoreBreakdown: card.breakdown,
     keywordAnalyzer: card.keyword,
+    semanticKeywords,
     readabilityAnalyzer: card.readability,
     headlineOptimizer: heading,
     metaDescriptionGenerator: [
@@ -194,6 +270,11 @@ export function analyzeSEO({ text, title, keyword }) {
       competitorAverageWordCount: 2100,
       yourLinks: (text.match(/https?:\/\//g) || []).length,
       competitorAverageLinks: 8
-    }
+    },
+    externalData: {
+      searchInsights,
+      newsResearch
+    },
+    warnings
   };
 }

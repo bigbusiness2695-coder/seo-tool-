@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 import express from "express";
 import rateLimit from "express-rate-limit";
 
+import { checkGrammar } from "./lib/grammar.js";
 import { humanizeText } from "./lib/humanize.js";
+import { integrationStatus } from "./lib/integrations.js";
 import { checkPlagiarism } from "./lib/plagiarism.js";
 import { analyzeSEO } from "./lib/seo.js";
 
@@ -34,6 +36,21 @@ app.use(
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "free-plagiarism-humanizer-backend" });
+});
+
+app.get("/api/integrations/status", (_req, res) => {
+  res.json(integrationStatus());
+});
+
+app.get("/api/integrations/env-template", (_req, res) => {
+  const status = integrationStatus();
+  const lines = [];
+  for (const item of status.integrations) {
+    for (const env of item.env) {
+      lines.push(`${env}=`);
+    }
+  }
+  res.type("text/plain").send(lines.join("\n"));
 });
 
 app.post("/api/plagiarism", async (req, res) => {
@@ -70,7 +87,24 @@ app.post("/api/humanize", async (req, res) => {
   }
 });
 
-app.post("/api/seo/analyze", (req, res) => {
+app.post("/api/grammar/check", async (req, res) => {
+  try {
+    const text = String(req.body?.text || "");
+    const language = String(req.body?.language || "en-US");
+    if (!text.trim()) {
+      return res.status(400).json({ error: "Text is required." });
+    }
+    const report = await checkGrammar(text, language);
+    return res.json(report);
+  } catch (error) {
+    return res.status(500).json({
+      error: "Failed to run grammar check.",
+      details: error.message
+    });
+  }
+});
+
+app.post("/api/seo/analyze", async (req, res) => {
   try {
     const text = String(req.body?.text || "");
     const title = String(req.body?.title || "");
@@ -78,7 +112,7 @@ app.post("/api/seo/analyze", (req, res) => {
     if (!text.trim()) {
       return res.status(400).json({ error: "Text is required." });
     }
-    const report = analyzeSEO({ text, title, keyword });
+    const report = await analyzeSEO({ text, title, keyword });
     return res.json(report);
   } catch (error) {
     return res.status(500).json({
@@ -98,24 +132,27 @@ app.post("/api/optimize", async (req, res) => {
       return res.status(400).json({ error: "Text is required." });
     }
 
-    const [plagiarism, humanizer, seo] = await Promise.all([
+    const [plagiarism, humanizer, seo, grammar] = await Promise.all([
       checkPlagiarism(text),
       humanizeText(text, intensity, 5),
-      Promise.resolve(analyzeSEO({ text, title, keyword }))
+      analyzeSEO({ text, title, keyword }),
+      checkGrammar(text, "en-US")
     ]);
 
     const qualityScore = Math.round(
       plagiarism.breakdown.original * 0.4 +
         (100 - plagiarism.plagiarismPercentage) * 0.2 +
-        seo.scoreBreakdown.readability * 0.2 +
-        seo.scoreBreakdown.keywordOptimization * 0.2
+        seo.scoreBreakdown.readability * 0.15 +
+        seo.scoreBreakdown.keywordOptimization * 0.15 +
+        grammar.score * 0.1
     );
 
     return res.json({
       qualityScore,
       plagiarism,
       humanizer,
-      seo
+      seo,
+      grammar
     });
   } catch (error) {
     return res.status(500).json({
