@@ -3,3 +3,4 @@ uvicorn
 python-multipart
 reportlab
 python-docx
+httpx

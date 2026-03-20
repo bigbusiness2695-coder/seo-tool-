@@ -276,6 +276,11 @@ def startup_event() -> None:
     init_db()
 
 
+# Initialize storage for environments where startup hooks are not triggered
+# (for example, direct function calls or non-lifespan test setups).
+init_db()
+
+
 def tokenize(text: str) -> list[str]:
     return re.findall(r"[a-zA-Z']+", text.lower())
 
